@@ -1,13 +1,20 @@
 # FentAnalytics
+
+if you liked this plz send money https://ko-fi.com/voryalis
+
 my first discord bot that gives overall server stats "wrapped"-style. tracks server activity and posts a recap.
-
+**check latest release**
+---
 ## features
-- message counts per user (ignores bot messages)
-- voice channel time tracking per user
-- game/activity time tracking (presence updates; focuses on “Playing”)
-- top word frequency per server (words length 3+)
-- `!wrapped` command to post a recap embed for the current server
-
+- message counts per user (bots ignored)
+- voice channel time tracking
+- game / activity tracking via discord presence
+- favorite (most played) game per user
+- privacy-aware handling when game activity is hidden
+- top word frequency (words with length 3+)
+- wrapped-style embeds
+- persistent data using sqlite
+---
 - ## requirements
 - Node.js **18+**
 - discord bot token
@@ -16,13 +23,27 @@ my first discord bot that gives overall server stats "wrapped"-style. tracks ser
   - **Presence Intent**
   - **Server Members Intent**
   - **Voice States**
- 
-## setup 
+ ---
+# commands
 
-### 1) download / open the project
-open the project folder in VS Code (the folder that contains `package.json` and `bot.js`).
+### wrapped analytics
 
-### 2) install dependencies
-```bash
-npm install
-npm install dotenv
+- `!wrapped`  
+  shows a server-wide wrapped summary
+
+- `!wrapped me`  
+  shows your personal wrapped stats
+
+- `!wrapped @user`  
+  shows wrapped stats for a specific user, including:
+  - avatar
+  - display name
+  - messages
+  - voice time
+  - top words
+  - favorite game
+
+if a user has game activity hidden in discord settings, the bot will display:
+
+no game activity recorded.
+check discord privacy settings
