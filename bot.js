@@ -7,6 +7,8 @@ const {
     GatewayIntentBits,
 } = require('discord.js');
 
+const BOT_NAME = "FentAnalytics";
+
 const DB_FILE = process.env.DISCORD_ANALYTICS_DB || 'analytics.db';
 const COMMAND_PREFIX = process.env.DISCORD_ANALYTICS_PREFIX || '!';
 
