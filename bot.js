@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const sqlite3 = require('sqlite3').verbose();
 const {
     ActivityType,
@@ -15,7 +17,7 @@ const COMMAND_PREFIX = process.env.DISCORD_ANALYTICS_PREFIX || '!';
 const WORD_REGEX = /\b\w{3,}\b/gu;
 
 function extractWords(content = '') {
-    const matches = content.toLocaleLowerCase().match(Word_REGEX);
+    const matches = content.toLocaleLowerCase().match(WORD_REGEX);
     return matches ? matches : [];
 }
 
@@ -66,7 +68,7 @@ class AnalyticsStore {
         user_id TEXT NOT NULL,
         count INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (guild_id, user_id)
-     )`  
+     )`
         );
         await run(
             this.db,
@@ -95,7 +97,7 @@ class AnalyticsStore {
         seconds INTEGER NOT NULL DEFAULT 0,
          PRIMARY KEY (guild_id, user_id, name)
       )`
-        );  
+        );
     }
 
     async incrementMessage(guildId, userId) {
@@ -115,7 +117,7 @@ class AnalyticsStore {
         const sql = `INSERT INTO words (guild_id, word, count)
                      VALUES (?, ?, 1)
                      ON CONFLICT(guild_id, word) DO UPDATE SET count = count + 1`;
-    
+
         for (const word of normalized) {
           await run(this.db, sql, [guildId, word]);
         }
@@ -164,7 +166,7 @@ class AnalyticsStore {
           [guildId, limit]
         );
       }
-    
+
       async getWordLeaderboard(guildId, limit = 5) {
         await this.ready;
         return all(
@@ -174,7 +176,7 @@ class AnalyticsStore {
           [guildId, limit]
         );
       }
-    
+
       async getActivityLeaderboard(guildId, limit = 5) {
         await this.ready;
         return all(
@@ -222,7 +224,7 @@ async function buildUserLeaderboard(guild, rows, formatter = (value) =>  `${valu
 }
 
 function buildNamedLeaderboard(rows, formatter = (value) =>  `${value}`) {
-    if(!rowss.length) return 'No data yet.';
+    if(!rows.length) return 'No data yet.';
     return rows
     .map((entry, idx) => `${idx + 1}. **${entry.name}** — ${formatter(entry.value)}`)
     .join('\n');
@@ -237,9 +239,10 @@ async function renderWrapped(message, store) {
 
     const guildId = guild.id;
     const embed = new EmbedBuilder()
-    .setTitle(`${guild.name} Wrapped`)
+    .setTitle(`${BOT_NAME} • Wrapped`)
     .setDescription("Here are your community's highlights")
-    .setColor(0x5865f2);
+    .setColor(0x5865f2)
+    .setFooter({ text: `${BOT_NAME} Analytics Bot` });
 
     const [messages, voice, activies, words] = await Promise.all([
         store.getMessageLeaderboard(guildId),
@@ -270,109 +273,100 @@ async function renderWrapped(message, store) {
     await message.reply({ embeds: [embed] });
 }
 
-async function main() {
-    const token = process.env.DISCORD_TOKEN;
-    if (!token) {
-      throw new Error('Please set the DISCORD_TOKEN environment variable.');
-    }
-  
-    const store = new AnalyticsStore();
-    const voiceSessions = new Map();
-    const activitySessions = new Map();
-  
-    const client = new Client({
-      intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.GuildPresences,
-      ],
-    });
-  
-    client.once(Events.ClientReady, (readyClient) => {
-      // eslint-disable-next-line no-console
-      console.log(`Logged in as ${readyClient.user.tag}`);
-    });
-  
-    client.on(Events.MessageCreate, async (message) => {
-      if (!message.guild || message.author.bot) return;
-  
-      await store.incrementMessage(message.guild.id, message.author.id);
-      const words = extractWords(message.content);
-      if (words.length) await store.incrementWords(message.guild.id, words);
-  
-      if (!message.content.startsWith(COMMAND_PREFIX)) return;
-      const command = message.content.slice(COMMAND_PREFIX.length).trim().toLowerCase();
-      if (command === 'wrapped') {
-        await renderWrapped(message, store);
-      }
-    });
-  
-    client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-      const guildId = newState.guild.id;
-      const userId = newState.id;
-      const key = `${guildId}:${userId}`;
-      const now = Math.floor(Date.now() / 1000);
-  
-      const previousChannel = oldState.channelId;
-      const currentChannel = newState.channelId;
-  
-      if (previousChannel && !currentChannel) {
-        const startedAt = voiceSessions.get(key);
-        if (startedAt) {
-          await store.addVoiceSeconds(guildId, userId, now - startedAt);
-          voiceSessions.delete(key);
-        }
-        return;
-      }
-  
-      if (previousChannel !== currentChannel) {
-        const startedAt = voiceSessions.get(key);
-        if (startedAt) {
-          await store.addVoiceSeconds(guildId, userId, now - startedAt);
-        }
-        if (currentChannel) {
-          voiceSessions.set(key, now);
-        } else {
-          voiceSessions.delete(key);
-        }
-        return;
-      }
-  
-      if (currentChannel && !voiceSessions.has(key)) {
-        voiceSessions.set(key, now);
-      }
-    });
-  
-    client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
-      if (!newPresence?.guild) return;
-  
-      const guildId = newPresence.guild.id;
-      const userId = newPresence.userId;
-      const key = `${guildId}:${userId}`;
-      const now = Math.floor(Date.now() / 1000);
-  
-      const previous = getPlayingActivity(oldPresence);
-      const current = getPlayingActivity(newPresence);
-      const activeSession = activitySessions.get(key);
-  
-      if (activeSession && (!current || activeSession.name !== current)) {
-        await store.addActivitySeconds(guildId, userId, activeSession.name, now - activeSession.startedAt);
-        activitySessions.delete(key);
-      }
-  
-      if (current && (!activeSession || activeSession.name !== current)) {
-        activitySessions.set(key, { name: current, startedAt: now });
-      }
-    });
-  
-    await client.login(token);
+if (!process.env.DISCORD_TOKEN) {
+  throw new Error('Please set the DISCORD_TOKEN environment variable.');
+}
+
+const store = new AnalyticsStore();
+const voiceSessions = new Map();
+const activitySessions = new Map();
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildPresences,
+  ],
+});
+
+client.once(Events.ClientReady, (readyClient) => {
+  // eslint-disable-next-line no-console
+  console.log(`${BOT_NAME} is online as ${readyClient.user.tag}`);
+});
+
+client.on(Events.MessageCreate, async (message) => {
+  if (!message.guild || message.author.bot) return;
+
+  await store.incrementMessage(message.guild.id, message.author.id);
+  const words = extractWords(message.content);
+  if (words.length) await store.incrementWords(message.guild.id, words);
+
+  if (!message.content.startsWith(COMMAND_PREFIX)) return;
+  const command = message.content.slice(COMMAND_PREFIX.length).trim().toLowerCase();
+  if (command === 'wrapped') {
+    await renderWrapped(message, store);
   }
-  
-  main().catch((error) => {
-    // eslint-disable-next-line no-console
-    console.error('Bot failed to start:', error);
-    process.exitCode = 1;
-  });
+});
+
+client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+  const guildId = newState.guild.id;
+  const userId = newState.id;
+  const key = `${guildId}:${userId}`;
+  const now = Math.floor(Date.now() / 1000);
+
+  const previousChannel = oldState.channelId;
+  const currentChannel = newState.channelId;
+
+  if (previousChannel && !currentChannel) {
+    const startedAt = voiceSessions.get(key);
+    if (startedAt) {
+      await store.addVoiceSeconds(guildId, userId, now - startedAt);
+      voiceSessions.delete(key);
+    }
+    return;
+  }
+
+  if (previousChannel !== currentChannel) {
+    const startedAt = voiceSessions.get(key);
+    if (startedAt) {
+      await store.addVoiceSeconds(guildId, userId, now - startedAt);
+    }
+    if (currentChannel) {
+      voiceSessions.set(key, now);
+    } else {
+      voiceSessions.delete(key);
+    }
+    return;
+  }
+
+  if (currentChannel && !voiceSessions.has(key)) {
+    voiceSessions.set(key, now);
+  }
+});
+
+client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
+  if (!newPresence?.guild) return;
+
+  const guildId = newPresence.guild.id;
+  const userId = newPresence.userId;
+  const key = `${guildId}:${userId}`;
+  const now = Math.floor(Date.now() / 1000);
+
+  const previous = getPlayingActivity(oldPresence);
+  const current = getPlayingActivity(newPresence);
+  const activeSession = activitySessions.get(key);
+
+  if (activeSession && (!current || activeSession.name !== current)) {
+    await store.addActivitySeconds(guildId, userId, activeSession.name, now - activeSession.startedAt);
+    activitySessions.delete(key);
+  }
+
+  if (current && (!activeSession || activeSession.name !== current)) {
+    activitySessions.set(key, { name: current, startedAt: now });
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN);
