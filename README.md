@@ -1,58 +1,28 @@
 # FentAnalytics
-# Discord Wrapped Analytics Bot
+my first discord bot that gives overall server stats "wrapped"-style. tracks server activity and posts a recap.
 
-A lightweight Discord bot that captures server activity and produces "wrapped"-style recaps: who chats the most, which games people play, voice channel time, and top words.
+## features
+- message counts per user (ignores bot messages)
+- voice channel time tracking per user
+- game/activity time tracking (presence updates; focuses on “Playing”)
+- top word frequency per server (words length 3+)
+- `!wrapped` command to post a recap embed for the current server
 
-## Features
-- Message counts per user.
-- Voice channel time tracking per user.
-- Game/activity time tracking using presence updates.
-- Top word frequency per server.
-- `!wrapped` command that posts a summary embed for the current server.
+- ## requirements
+- Node.js **18+**
+- discord bot token
+- discord intents enabled in the developer portal:
+  - **Message Content Intent**
+  - **Presence Intent**
+  - **Server Members Intent**
+  - **Voice States**
+ 
+## setup 
 
-## Requirements
-- Node.js 18+
-- A Discord bot token with **MESSAGE CONTENT**, **PRESENCE**, **SERVER MEMBERS**, and **VOICE STATES** intents enabled in the Developer Portal.
+### 1) download / open the project
+Open the project folder in VS Code (the folder that contains `package.json` and `bot.js`).
 
-Install dependencies:
-
+### 2) install dependencies
 ```bash
 npm install
-```
-
-## Running locally (beginner friendly)
-1. Create a bot in the Discord Developer Portal and invite it to your server with the needed intents (Message Content, Presence, Server Members, Voice States).
-2. Copy `.env.example` to `.env` and paste your token:
-   ```bash
-   cp .env.example .env
-   ```
-   Open `.env` and set `DISCORD_TOKEN=YOUR_BOT_TOKEN`. Leave the other values alone unless you want to customize them.
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Start the bot:
-   ```bash
-   npm start
-   ```
-
-Use `!wrapped` in any server where the bot is present to see the current summary. Data is stored in the SQLite database for persistence across restarts.
-
-## How tracking works
-- **Messages**: counts every non-bot message and indexes words of length 3 or more.
-- **Voice**: records join/leave and channel switches to accumulate time in seconds.
-- **Activities**: captures time spent in "Playing" presence activities (e.g., games). Other activity types are ignored to keep the focus on games.
-
-## Testing and quick checks
-- Lint the bot script (fast sanity check):
-  ```bash
-  npm run lint
-  ```
-- Verify Node.js version (should be 18+):
-  ```bash
-  node -v
-  ```
-- If the bot does not respond, double-check the intents in the Developer Portal and that `DISCORD_TOKEN` in your `.env` is correct.
-
-## Resetting data
-To start fresh, stop the bot and delete the SQLite database file configured by `DISCORD_ANALYTICS_DB` (defaults to `analytics.db`)
+npm install dotenv
