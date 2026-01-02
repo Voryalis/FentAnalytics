@@ -1,0 +1,17 @@
+{
+    "name": "fentanalytics",
+    "version": "1.0.0",
+    "description": "Discord Wrapped-style analytics bot using discord.js and SQLite",
+    "main": "bot.js",
+    "scripts": {
+      "start": "node bot.js",
+      "lint": "node --check bot.js"
+    },
+    "engines": {
+      "node": ">=18"
+    },
+    "dependencies": {
+      "discord.js": "^14.15.3",
+      "sqlite3": "^5.1.7"
+    }
+  }
