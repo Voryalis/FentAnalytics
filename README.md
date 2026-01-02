@@ -20,7 +20,7 @@ my first discord bot that gives overall server stats "wrapped"-style. tracks ser
 ## setup 
 
 ### 1) download / open the project
-Open the project folder in VS Code (the folder that contains `package.json` and `bot.js`).
+open the project folder in VS Code (the folder that contains `package.json` and `bot.js`).
 
 ### 2) install dependencies
 ```bash
